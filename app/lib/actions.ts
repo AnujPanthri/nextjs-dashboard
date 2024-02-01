@@ -4,6 +4,30 @@ import { sql } from '@vercel/postgres';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
+import { signIn } from '@/auth';
+import { AuthError } from 'next-auth';
+
+export async function authenticate(
+    prevState: string | undefined,
+    formdata: FormData
+) {
+    try {
+        await signIn('credentials', formdata);
+    }
+    catch (error) {
+        if (error instanceof AuthError){
+            switch (error.type){
+                case 'CredentialsSignin':
+                    return "Invalid Credentials.";
+                default:
+                    return "Something Went Wrong.";
+            }
+        }
+        throw error;    // if its not an AuthError
+    }
+
+}
+
 const FormSchema = z.object({
     id: z.string(),
     customerId: z.string({
@@ -37,7 +61,7 @@ export async function createInvoice(prevState: State, formdata: FormData) {
         status: formdata.get("status"),
     });
 
-    if(!validatedFields.success){   // error in data validation
+    if (!validatedFields.success) {   // error in data validation
         return {
             errors: validatedFields.error.flatten().fieldErrors,
             message: "Missing Fields. Failed to Create Invoice."
@@ -70,7 +94,7 @@ export async function updateInvoice(
     id: string,
     prevState: State,
     formData: FormData,
-    ) {
+) {
 
     const validatedFields = UpdateInvoice.safeParse({
         customerId: formData.get('customerId'),
@@ -78,7 +102,7 @@ export async function updateInvoice(
         status: formData.get('status'),
     });
 
-    if(!validatedFields.success){
+    if (!validatedFields.success) {
         return {
             errors: validatedFields.error.flatten().fieldErrors,
             message: "Missing Fields. Failed to Update Invoice.",
